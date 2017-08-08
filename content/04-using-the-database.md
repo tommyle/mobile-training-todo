@@ -1,7 +1,6 @@
 ---
-id: using-the-database
 title: Using the Database
-permalink: training/develop/using-the-database/index.html
+type: mobile-training-todo
 ---
 
 In this lesson you’ll be introduced to Couchbase Lite, our embedded NoSQL database. You’ll learn how to create, read, update, delete, and query data using Couchbase Lite.

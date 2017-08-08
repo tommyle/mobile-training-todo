@@ -1,7 +1,6 @@
 ---
-id: security
-title: Security and Access Control
-permalink: training/design/security/index.html
+title: Access Control
+type: mobile-training-todo
 ---
 
 In this lesson you’ll learn how to secure your data model using Couchbase Mobile’s built-in security framework.

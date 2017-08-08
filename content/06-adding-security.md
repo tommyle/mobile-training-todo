@@ -1,7 +1,6 @@
 ---
-id: adding-security
 title: Adding Security
-permalink: training/develop/adding-security/index.html
+type: mobile-training-todo
 ---
 
 In this lesson you’ll learn how to add security to your Couchbase Mobile application. You’ll implement authentication and define access control, data validation, and access grant policies.

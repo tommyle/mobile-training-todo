@@ -1,6 +1,7 @@
 ---
 title: Adding Security
 type: mobile-training-todo
+tabs: true
 ---
 
 In this lesson you’ll learn how to add security to your Couchbase Mobile application. You’ll implement authentication and define access control, data validation, and access grant policies.

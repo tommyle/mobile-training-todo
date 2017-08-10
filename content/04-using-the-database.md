@@ -1,6 +1,7 @@
 ---
 title: Using the Database
 type: mobile-training-todo
+tabs: true
 ---
 
 In this lesson you’ll be introduced to Couchbase Lite, our embedded NoSQL database. You’ll learn how to create, read, update, delete, and query data using Couchbase Lite.

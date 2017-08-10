@@ -1,6 +1,7 @@
 ---
 title: Adding Synchronization
 type: mobile-training-todo
+tabs: true
 ---
 
 In this lesson you’ll be introduced to Sync Gateway, our secure web gateway. You’ll learn how to use Couchbase Lite’s synchronization APIs, set up Sync Gateway for synchronization with the cloud and other devices, and resolve data conflicts within your application.

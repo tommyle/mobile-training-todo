@@ -1,0 +1,12 @@
+SyncEnabled:
+  - swift: kSyncEnabled
+  - csharp: SyncEnabled
+  - java: mSyncEnabled
+MainApp:
+  - swift: AppDelegate.swift
+  - csharp: CoreApp.cs
+  - java: Application.java
+SyncUrl:
+  - swift: kSyncUrl
+  - csharp: SyncUrl
+  - java: mSyncUrl

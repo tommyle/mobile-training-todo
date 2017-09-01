@@ -1,0 +1,176 @@
+requirements:
+  $ref: requirements.yaml
+description: |
+  In this lesson you’ll be introduced to Sync Gateway, our secure web gateway. You’ll learn how to use Couchbase Lite’s synchronization APIs, set up Sync Gateway for synchronization with the cloud and other devices, and resolve data conflicts within your application.
+lessons:
+  - title: Installing Sync Gateway
+    description: |
+      Now that your application runs smoothly on the device you are ready to introduce Sync Gateway. Create a new file called **sync-gateway-config.json** with the following.
+      
+      ```javascript
+      {
+        "interface":":4984",
+        "log": ["HTTP", "Auth"],
+        "databases": {
+          "todo": {
+            "server": "walrus:",
+            "users": {
+              "GUEST": {"disabled": false, "admin_channels": ["*"] }
+            }
+          }
+        }
+      }
+      ```
+      
+      During development, you can set the **server** property to **walrus:** (also known as the Walrus mode) and it will keep the data in memory. Note that anytime you restart Sync Gateway in walrus mode, the database will be empty.
+      
+      By default, Sync Gateway doesn't allow unauthenticated requests to be processed for security reasons. So you're enabling the **GUEST** user which represents all the unauthenticated clients that will be synchronizing with your Sync Gateway instance.
+      
+      > **Note:** User authentication is covered in more detail in the [Adding Security](/documentation/mobile/current/training/develop/adding-security/index.html) lesson.
+      
+      Sync Gateway is always listening on two ports:
+      
+      - 4984: the public port which will be used from the application.
+      - 4985: the admin port used for administrative tasks (for security reasons, it’s only accessible on localhost).
+    tryitout:
+      - |
+        [Download Sync Gateway](http://www.couchbase.com/nosql-databases/downloads#couchbase-mobile)
+      - Unzip the file and locate the executable at **bin/sync_gateway** (macOS) or run the installer (Windows).
+      - |
+        Start Sync Gateway from the command-line in your project directory.
+        
+        ```bash
+        sync_gateway sync-gateway-config.json
+        ```
+        
+        ```powershell
+        PS> & 'C:\Program Files (x86)\Couchbase\sync_gateway.exe' sync-gateway-config.json
+        ```
+        
+        > **Note:** The Sync Gateway service might be running on Windows which will prevent this command from succeeding with the message 'FATAL: Failed to start HTTP server on 127.0.0.1:4985: listen tcp 127.0.0.1:4985: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.'  To get around this, stop the 'Couchbase Sync Gateway' service in 'services.msc'.
+  - title: Add synchronization
+    description: |
+      Typically, an application needs to send data to the server and receive it. In Couchbase Mobile, this is handled by replications which run on the device. A replication requires a Couchbase Lite database and a Sync Gateway URL, and synchronizes data between the two. They can be of two types:
+      
+      - **Push:** The data is pushed from Couchbase Lite to Sync Gateway.
+      - **Pull:** The data is pulled from Sync Gateway to Couchbase Lite.
+      
+      There are a few terminologies that designate the role of each database involved in a replications:
+      
+      - **Source:** The database where the data is read.
+      - **Target:** The database where the data is written.
+      - **Local:** The database that resides where the replication is running.
+      - **Remote:** The database to which the replication is sending data.
+      
+      The following code starts a pull and push replication with progress notifications.
+    snippet:
+      - swift: https://github.com/couchbaselabs/mobile-training-todo/blob/0a22f4814e84048be0bca400d7e4ef3e63c10a6d/ios/Todo/AppDelegate.swift#L268-L286
+      - csharp: https://github.com/couchbaselabs/mobile-training-todo/blob/0a22f4814e84048be0bca400d7e4ef3e63c10a6d/dotnet/Training.Core/CoreApp.cs#L216-L237
+      - java: https://github.com/couchbaselabs/mobile-training-todo/blob/0a22f4814e84048be0bca400d7e4ef3e63c10a6d/android/app/src/main/java/com/couchbase/todo/Application.java#L267-L291
+    tryitout:
+      - description: In $$MainApp, set $$SyncUrl to the URL of the Sync Gateway database (http://localhost:4984/todo/).
+        snippet:
+          - swift: let kSyncGatewayUrl = URL(string: "http://localhost:4984/todo/")!
+          - csharp: private static readonly Uri SyncGatewayUrl = new Uri("http://localhost:4984/todo/");
+          - java: private String mSyncGatewayUrl = "http://10.0.2.2:4984/todo/";
+      - description: Set $$SyncEnabled to `true` in $$MainApp.
+        snippet:
+          - swift: let kSyncEnabled = true
+          - csharp: |
+              var retVal = new CoreAppStartHint {
+                  LoginEnabled = false,
+                  EncryptionEnabled = false,
+                  SyncEnabled = true, // Line to change is here
+                  UsePrebuiltDB = false,
+                  ConflictResolution = false,
+                  Username = "todo"
+              };
+          
+              return retVal;
+          - java: private Boolean mSyncEnabled = true;
+      - Build and run.
+      - |
+        Open [http://localhost:4985/_admin/db/todo](http://localhost:4985/_admin/db/todo) in the browser and notice that all the documents are pushed to Sync Gateway! You may have more or less rows depending on how many documents are present in the Couchbase Lite database.
+        
+        ![](img/image19.png)
+  - title: Resolve Conflicts
+    description: |
+      Due to the unpredictability of mobile connections it's inevitable that more than one device will update the same document simultaneously. Couchbase Lite provides features to resolve these conflicts. The resolution rules are written by the developer to keep full control over which revision should be picked. The most common resolution methods are:
+      
+      - **Deletes always win:** if one side deletes a document it will always stay deleted, even if the other side has made changes to it later on.
+      - **N-way merge:** if both sides have updated different properties, the document will end up with the updates from both sides.
+      - **Last update wins:** if both sides have updated the same property, the value will end up as the last one that was updated.
+      
+      Revisions form a tree data structure and a conflict occurs when there are multiple branches in the revision tree. On the diagram below the conflict is resolved by deleting one branch of the tree (the branch starting at **3-42cc**). The other one is the active branch (i.e the winner) where further child revisions can be persisted (**4-45cb** and **5-42bb**).
+      
+      ![](img/image16.png" class="portrait")
+      
+      ### Detecting conflicts
+      
+      To resolve conflicts you must first learn how to detect them. The code below uses an All Docs query which is an index of all the documents in the local database. The **OnlyConflicts** option is passed to report only the documents with conflicts and a **LiveQuery** is used to continuously monitor the database for changes.
+    snippet:
+      - swift: |
+          // This code can be found in AppDelegate.swift
+          // in the startConflictLiveQuery() method
+          guard kConflictResolution else {
+              return
+          }
+          
+          conflictsLiveQuery = database.createAllDocumentsQuery().asLive()
+          conflictsLiveQuery!.allDocsMode = .onlyConflicts
+          conflictsLiveQuery!.addObserver(self, forKeyPath: "rows", options: .new, context: nil)
+          conflictsLiveQuery!.start()
+          ```
+          
+          The query results are then posted to the application code using the KVO observer method.
+          
+          ```swift
+          // This code can be found in AppDelegate.swift
+          // in the observeValue(forKeyPath:of:change:context:) method
+          override func observeValue(forKeyPath keyPath: String?, of object: Any?,
+                                      change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+              if object as? NSObject == conflictsLiveQuery {
+                  resolveConflicts()
+              }
+          }
+      - csharp: |
+          // This code can be found in CoreApp.cs
+          // in the StartConflictLiveQuery() method
+          _conflictsLiveQuery = Database.CreateAllDocumentsQuery().ToLiveQuery();
+          _conflictsLiveQuery.AllDocsMode = AllDocsMode.OnlyConflicts;
+          _conflictsLiveQuery.Changed += ResolveConflicts;
+          
+          _conflictsLiveQuery.Start();
+      - java: |
+          // This code can be found in Application.java
+          // in the startConflictLiveQuery() method
+          LiveQuery conflictsLiveQuery = database.createAllDocumentsQuery().toLiveQuery();
+          conflictsLiveQuery.setAllDocsMode(Query.AllDocsMode.ONLY_CONFLICTS);
+          conflictsLiveQuery.addChangeListener(new LiveQuery.ChangeListener() {
+              @Override
+              public void changed(LiveQuery.ChangeEvent event) {
+                  resolveConflicts(event.getRows());
+              }
+          });
+          conflictsLiveQuery.start();
+    tryitout:
+      - description: Enable conflict resolution.
+        snippet:
+          - swift: let kConflictResolution = true
+          - csharp: |
+             var retVal = new CoreAppStartHint {
+                 LoginEnabled = false,
+                 EncryptionEnabled = false,
+                 SyncEnabled = false,
+                 UsePrebuiltDB = false,
+                 ConflictResolution = true, // The line to change
+                 Username = "todo"
+             };
+          
+             return retVal;
+          - java: private Boolean mConflictResolution = true;
+      - Build and run.
+      - description: Create a task conflict using the shake gesture (or **^⌘Z**) and this time the row contains the updated text **and** is marked as completed.
+        screenshot: image03
+conclusion: |
+  Well done! You've completed this lesson on enabling synchronization, detecting and resolving conflicts. In the next lesson you'll learn how to implement authentication and define access control rules in the Sync Function. Feel free to share your feedback, findings or ask any questions on the forums.

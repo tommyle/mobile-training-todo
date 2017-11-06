@@ -7,9 +7,10 @@
     "test": "jest"
   },
   "dependencies": {
+    "create-react-class": "^15.6.2",
     "rc-swipeout": "^1.2.0",
-    "react": "15.4.1",
-    "react-native": "0.39.2",
+    "react": "16.0.0",
+    "react-native": "0.50.1",
     "react-native-couchbase-lite": "^0.6.0",
     "react-native-prompt": "^1.0.0",
     "react-native-router-flux": "^3.37.0",
